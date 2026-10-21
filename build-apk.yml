@@ -1,0 +1,100 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare Web Assets & Download Offline Libraries
+        run: |
+          mkdir -p www/libs
+          # If index.html exists at root but not in www/, copy it
+          if [ -f "index.html" ] && [ ! -f "www/index.html" ]; then
+            cp index.html www/index.html
+          fi
+          # If a zip archive was uploaded, unpack it into www/
+          if [ -f "app-source.zip" ]; then
+            unzip -o app-source.zip -d www/
+          fi
+          # Download standalone offline dependencies into the APK package
+          echo "Bundling offline libraries..."
+          curl -sSL https://cdn.tailwindcss.com/3.4.17 -o www/libs/tailwind.min.js
+          curl -sSL https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js -o www/libs/chart.umd.min.js
+          curl -sSL https://unpkg.com/lucide@latest -o www/libs/lucide.min.js
+          ls -la www/libs/
+
+      - name: Install Capacitor Dependencies
+        run: |
+          npm install
+
+      - name: Add & Sync Android Platform
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Configure Android Manifest for Offline WebView
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST" ]; then
+            sed -i 's/<application /<application android:usesCleartextTraffic="true" /' "$MANIFEST" || true
+          fi
+
+      - name: Build Debug APK with Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare Output Artifact
+        run: |
+          mkdir -p dist-apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk dist-apk/StudentMoneyManagerPro-v1.0.apk
+          ls -lh dist-apk/
+
+      - name: Upload APK as Workflow Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: StudentMoneyManagerPro-v1.0-APK
+          path: dist-apk/StudentMoneyManagerPro-v1.0.apk
+          retention-days: 30
+
+      - name: Create Direct Release (One-Tap APK Download)
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/'))
+        with:
+          tag_name: v1.0.0
+          name: Student Money Manager Pro v1.0.0 (Android APK)
+          draft: false
+          prerelease: false
+          files: dist-apk/StudentMoneyManagerPro-v1.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
