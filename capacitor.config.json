@@ -1,0 +1,9 @@
+{
+  "appId": "com.studentmoney.pro",
+  "appName": "Student Money Manager Pro",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true
+  }
+}

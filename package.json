@@ -1,0 +1,19 @@
+{
+  "name": "student-money-manager-pro",
+  "version": "1.0.0",
+  "description": "Student Money Manager Pro Android APK Project",
+  "author": "Student Money Manager Pro",
+  "license": "MIT",
+  "scripts": {
+    "build": "echo 'Web assets ready in www/'",
+    "cap:sync": "cap sync android",
+    "cap:build": "cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}
